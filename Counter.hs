@@ -23,6 +23,12 @@ upCounter enable = s
   where
   s = regEn 0 enable (s + 1)
 
+-- NOTE!
+-- we could write (if counter == 268435455 then not1 s else s), however
+-- this doesn't seem to work, at least there will be error when:
+--
+-- *UpCounter> sampleN 10 (topEntity $ pure True)
+-- [False*** Exception: (==)' undefined for 'Signal'', use '(.==.)' instead
 ledState :: Signal (Unsigned 28) -> Signal Bool
 ledState counter = s
   where
