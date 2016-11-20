@@ -6,7 +6,6 @@ import CLaSH.Prelude
 import Control.Lens
 import Control.Monad
 import Control.Monad.Trans.State
-import UART.ModMCounter
 
 data RxState = RxState
   { _rx_done_tick :: Bit

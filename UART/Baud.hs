@@ -1,4 +1,4 @@
-module UART.ModMCounter (baud_tick) where
+module UART.Baud (baud_tick) where
 
 import CLaSH.Prelude
 

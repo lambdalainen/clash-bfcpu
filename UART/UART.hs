@@ -1,7 +1,7 @@
 module UART.UART where
 
 import CLaSH.Prelude
-import UART.ModMCounter
+import UART.Baud
 import UART.Rx
 
 {-# ANN topEntity
