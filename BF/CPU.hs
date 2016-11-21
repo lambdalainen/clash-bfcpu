@@ -31,9 +31,8 @@ ramVec :: Vec 65536 Data
 ramVec = replicate snat 0
 
 -- w_addr -> r_addr -> w_enable -> w_value -> r_value
-arrayRam :: Signal Addr -> Signal Addr -> Signal Bool -> Signal Data -> Signal Data
+arrayRam, instrRam :: Signal Addr -> Signal Addr -> Signal Bool -> Signal Data -> Signal Data
 arrayRam = blockRamPow2 ramVec
-
 instrRam = blockRamPow2 ramVec
 
 cpuProgMode :: BfState     -> -- state
