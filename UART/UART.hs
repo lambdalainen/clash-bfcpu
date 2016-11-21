@@ -18,6 +18,7 @@ import UART.Rx
 --   where
 --   rx_reg  = register rxInit (rxRun <$> rx_reg <*> rx <*> baud_tick)
 
+-- rx -> (rx_done_tick, dout)
 uart :: Signal Bit -> (Signal Bit, Signal (BitVector 8))
 uart rx = (_rx_done_tick <$> rx_reg, _b_reg <$> rx_reg)
   where
