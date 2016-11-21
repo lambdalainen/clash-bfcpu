@@ -55,11 +55,11 @@ cpuProgMode s@(BfState {..}) (rx_done_tick, dout) = swap $ flip runState s $ do
     , t_extraOut = []
     , t_clocks   = []
     }) #-}
-topEntity :: Signal Bit -> Signal Data
-topEntity rx = instr_out
+topEntity :: Signal Bit -> Signal Addr
+topEntity rx = w_addr
   where
   (rx_done_tick, dout) = uart rx
 
   (w_addr, r_addr, w_en, instr_in) = mealyB cpuProgMode bfInit (rx_done_tick, dout)
 
-  instr_out = instrRam w_addr r_addr w_en instr_in
+  -- instr_out = instrRam w_addr r_addr w_en instr_in
