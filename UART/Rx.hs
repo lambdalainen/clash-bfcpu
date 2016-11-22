@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module UART.Rx (RxState(..), rxInit, rxRun) where
+module UART.Rx (RxState(_rx_done_tick, _b_reg), rxInit, rxRun) where
 
 import CLaSH.Prelude
 import Control.Lens
@@ -10,9 +10,9 @@ import Control.Monad.Trans.State
 data RxState = RxState
   { _rx_done_tick :: Bit
   , _rx_state     :: Unsigned 2
-  , _s_reg        :: Unsigned 4  -- sampling counter
-  , _n_reg        :: Unsigned 3  -- number of bits received
-  , _b_reg        :: BitVector 8 -- byte register
+  , _s_reg        :: Unsigned 4 -- sampling counter
+  , _n_reg        :: Unsigned 3 -- number of bits received
+  , _b_reg        :: Unsigned 8 -- byte register
   }
 
 makeLenses ''RxState
