@@ -22,7 +22,7 @@ txInit :: TxState
 txInit = TxState 1 False 0 0 0 0
 
 txRun :: TxState -> Bool -> Unsigned 8 -> Bit -> TxState
-txRun s@(TxState {..}) tx_start din s_tick = flip execState s $ do
+txRun s@(TxState {..}) tx_start tx_din s_tick = flip execState s $ do
   tx_done_tick .= False
   case _tx_state of
     0 -> idle
@@ -35,7 +35,7 @@ txRun s@(TxState {..}) tx_start din s_tick = flip execState s $ do
     when tx_start $ do
       tx_state .= 1
       s_reg .= 0
-      b_reg .= din
+      b_reg .= tx_din
 
   start = do
     tx .= 0
