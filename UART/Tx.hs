@@ -9,7 +9,7 @@ import Control.Monad.Trans.State
 
 data TxState = TxState
   { _tx           :: Bit
-  , _tx_done_tick :: Bit
+  , _tx_done_tick :: Bool
   , _tx_state     :: Unsigned 2
   , _s_reg        :: Unsigned 4 -- sampling counter
   , _n_reg        :: Unsigned 3 -- number of bits received
@@ -19,11 +19,11 @@ data TxState = TxState
 makeLenses ''TxState
 
 txInit :: TxState
-txInit = TxState 1 0 0 0 0 0
+txInit = TxState 1 False 0 0 0 0
 
-txRun :: TxState -> Bit -> Bit -> Unsigned 8 -> TxState
-txRun s@(TxState {..}) tx_start s_tick din = flip execState s $ do
-  tx_done_tick .= 0
+txRun :: TxState -> Bool -> Unsigned 8 -> Bit -> TxState
+txRun s@(TxState {..}) tx_start din s_tick = flip execState s $ do
+  tx_done_tick .= False
   case _tx_state of
     0 -> idle
     1 -> start
@@ -32,7 +32,7 @@ txRun s@(TxState {..}) tx_start s_tick din = flip execState s $ do
   where
   idle  = do
     tx .= 1
-    when (tx_start == 1) $ do
+    when tx_start $ do
       tx_state .= 1
       s_reg .= 0
       b_reg .= din
@@ -65,6 +65,6 @@ txRun s@(TxState {..}) tx_start s_tick din = flip execState s $ do
     when (s_tick == 1) $
       if _s_reg == 15 then do
           tx_state .= 0
-          tx_done_tick .= 1
+          tx_done_tick .= True
       else
         s_reg += 1

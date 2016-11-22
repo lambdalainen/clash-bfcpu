@@ -8,7 +8,7 @@ import Control.Monad
 import Control.Monad.Trans.State
 
 data RxState = RxState
-  { _rx_done_tick :: Bit
+  { _rx_done_tick :: Bool
   , _rx_state     :: Unsigned 2
   , _s_reg        :: Unsigned 4 -- sampling counter
   , _n_reg        :: Unsigned 3 -- number of bits received
@@ -18,11 +18,11 @@ data RxState = RxState
 makeLenses ''RxState
 
 rxInit :: RxState
-rxInit = RxState 0 0 0 0 0
+rxInit = RxState False 0 0 0 0
 
 rxRun :: RxState -> Bit -> Bit -> RxState
 rxRun r@(RxState {..}) rx s_tick = flip execState r $ do
-  rx_done_tick .= 0
+  rx_done_tick .= False
   case _rx_state of
     0 -> idle
     1 -> start
@@ -55,6 +55,6 @@ rxRun r@(RxState {..}) rx s_tick = flip execState r $ do
   stop  = when (s_tick == 1) $
             if _s_reg == 15 then do
                 rx_state .= 0
-                rx_done_tick .= 1
+                rx_done_tick .= True
             else
               s_reg += 1
