@@ -21,10 +21,10 @@ topEntity rx = _tx <$> tx_reg
   rx_reg  = register rxInit (rxRun <$> rx_reg <*> rx <*> baud_tick)
   tx_reg  = register txInit (txRun <$> tx_reg <*> (_rx_done_tick <$> rx_reg)
                                               <*> baud_tick
-                                              <*> (_b_reg <$> rx_reg))
+                                              <*> (_dout <$> rx_reg))
 
 -- -- rx -> (rx_done_tick, dout)
 -- uart :: Signal Bit -> (Signal Bit, Signal (Unsigned 8))
--- uart rx = (_rx_done_tick <$> rx_reg, _b_reg <$> rx_reg)
+-- uart rx = (_rx_done_tick <$> rx_reg, _dout <$> rx_reg)
 --   where
 --   rx_reg  = register rxInit (rxRun <$> rx_reg <*> rx <*> baud_tick)
