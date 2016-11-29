@@ -20,12 +20,15 @@ data Mode = Prog | Exec
 data BfState = BfState
   { _cpu_mode  :: Mode
   , _instr_ptr :: Addr -- 2^16 instructions maximum
-  , _instr_reg :: Data
+  , _instr_reg :: Addr
   , _data_ptr  :: Addr -- 2^16 array cells
-  , _is_txing  :: Bool -- maybe can be replaced with _instr_reg
+  , _data_clr  :: Bool
   }
 
 makeLenses ''BfState
+
+bfInit :: BfState
+bfInit = BfState Prog 0 0xFFFF 0 True
 
 -- (rx_done_tick, rx_dout, tx_done_tick, instr_r, data_r)
 type CpuIn   = (Bool, Data, Bool, Data, Data)
@@ -68,9 +71,6 @@ defCpuOut = CpuOut { instr_w_addr = 0, instr_r_addr = 0, instr_w_en = False, ins
                    , prog_mode = False, exec_mode = False, tx_start = False, tx_din = 0
                    }
 
-bfInit :: BfState
-bfInit = BfState Prog 0 0 0 False
-
 -- Note: `replicate 65536 0` doesn't work
 ramVec :: Vec (2 ^ 16) Data
 ramVec = replicate snat 0
@@ -94,77 +94,95 @@ cpuRun s i =
     Exec -> cpuExecMode s i
 
 cpuProgMode s@(BfState {..}) (rx_done_tick, rx_dout, _, _, _) =
-  swap $ flip runState s $ do
-    let out = defCpuOut { prog_mode = True }
-    if rx_done_tick then
-      if isInstr rx_dout then do
-        instr_ptr += 1 -- TODO: check boundary
-        return out { instr_w_addr = _instr_ptr, instr_w_en = True, instr_w = rx_dout }
-      else do
-        if isEOT rx_dout then do
-          switch_to_exec
-          return out -- TODO: test the effect of readNew (read before write without it)
+  swap $ flip runState s $
+    if _data_clr then do
+      if _data_ptr == 2 ^ 16 - 1 then
+        data_clr .= False
+      else
+        data_ptr += 1
+      return defCpuOut { data_w_addr = _data_ptr, data_w_en = True, data_w = 0 }
+    else do
+      let out = defCpuOut { prog_mode = True }
+      if rx_done_tick then
+        if isInstr rx_dout then do
+          instr_ptr += 1 -- TODO: check boundary
+          return out { instr_w_addr = _instr_ptr, instr_w_en = True, instr_w = rx_dout }
         else
-          return out
-    else
-      return out
+          if isEOT rx_dout then do
+            switch_to_exec
+            -- TODO: test the effect of readNew (read before write without it)
+            return out { instr_w_addr = _instr_ptr, instr_w_en = True, instr_w = 0 }
+          else
+            return out
+      else
+        return out
   where
   switch_to_exec = do
     cpu_mode  .= Exec
     instr_ptr .= 0
+    instr_reg .= 0xFFFF -- TODO: weird
     data_ptr  .= 0
 
 cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data_r) =
   swap $ flip runState s $ do
-    if _is_txing then do
-      when tx_done_tick $
-        is_txing .= False
-      return out'
+    if _instr_ptr == _instr_reg then do -- previous instruction hasn't finished
+      case instr_r' of
+        '.' | tx_done_tick -> do
+          instr_ptr += 1
+          return out' { instr_r_addr = _instr_ptr + 1 }
+        ',' | rx_done_tick -> do
+          instr_ptr += 1
+          return out' { instr_r_addr = _instr_ptr + 1, data_w_addr = _data_ptr,
+                        data_w_en = True, data_w = rx_dout }
+        _ -> do
+          return out' { instr_r_addr = _instr_ptr }
     else
       if instr_r == 0 then do
         switch_to_prog
         return out'
       else do
+        instr_reg .= _instr_ptr
         case instr_r' of
-          '>' -> data_ptr += 1
-          '<' -> data_ptr -= 1
-          '+' -> return ()
-          '-' -> return ()
-          '.' -> return ()
-          ',' -> return ()
-          '[' -> return ()
-          ']' -> return ()
-          _   -> return ()
-        is_txing .= True
-        instr_ptr += 1
-        return out' { tx_start = True, tx_din = instr_r }
+          '>' -> do
+            instr_ptr += 1
+            data_ptr += 1 -- TODO: check boundary
+            return out' { instr_r_addr = _instr_ptr + 1, data_r_addr = _data_ptr + 1 }
+          '<' -> do
+            instr_ptr += 1
+            data_ptr -= 1
+            return out' { instr_r_addr = _instr_ptr + 1, data_r_addr = _data_ptr - 1 }
+          '+' -> do
+            instr_ptr += 1
+            return out' { instr_r_addr = _instr_ptr + 1, data_w_addr = _data_ptr,
+                          data_w_en = True, data_w = data_r + 1 }
+          '-' -> do
+            instr_ptr += 1
+            return out' { instr_r_addr = _instr_ptr + 1, data_w_addr = _data_ptr,
+                          data_w_en = True, data_w = data_r - 1 }
+          '.' -> do
+            return out' { instr_r_addr = _instr_ptr, tx_start = True, tx_din = data_r }
+          ',' -> do
+            return out' { instr_r_addr = _instr_ptr }
+          '[' -> return out'
+          ']' -> return out'
+          _   -> return out' -- TODO: indicate error
   where
   instr_r' = chr $ fromIntegral instr_r
 
-  out' = defCpuOut { instr_r_addr = _instr_ptr, exec_mode = True }
-
-  out  = case instr_r' of
-    '>' -> out' { data_w_addr = _data_ptr, data_r_addr = _data_ptr }
-    '<' -> out' { data_w_addr = _data_ptr, data_r_addr = _data_ptr }
-    '+' -> out' { data_w_en = True, data_w = data_r + 1 }
-    '-' -> out' { data_w_en = True, data_w = data_r - 1 }
-    '.' -> out' { tx_start = True, tx_din = data_r }
-    ',' -> out' { data_w_addr = _data_ptr, data_w = rx_dout }
-    '[' -> out'
-    ']' -> out'
-    _   -> out' -- TODO: indicate error
+  out' = defCpuOut { data_r_addr = _data_ptr, exec_mode = True }
 
   switch_to_prog = do
     cpu_mode  .= Prog
     instr_ptr .= 0
     data_ptr  .= 0
+    data_clr  .= True
 
 {-# ANN topEntity
   (defTop
     { t_name     = "bf_cpu"
     , t_inputs   = ["RsRx"]
     , t_outputs  = ["RsTx", "led_prog", "led_exec"]
-    , t_extraIn  = [("clk", 1)]
+    , t_extraIn  = [("clk", 1), ("btnCpuReset", 1)]
     , t_extraOut = []
     , t_clocks   = []
     }) #-}
