@@ -8,14 +8,14 @@ import Control.Lens
 type Addr = Unsigned 16
 type Data = Unsigned 8
 
-data Mode = Prog | Exec
+data Mode = Clear | Prog | Exec
+  deriving Eq
 
 data BfState = BfState
   { _cpu_mode  :: Mode
   , _instr_ptr :: Addr -- 2^16 instructions maximum
   , _instr_reg :: Addr
   , _data_ptr  :: Addr -- 2^16 array cells
-  , _data_clr  :: Bool
   }
 
 makeLenses ''BfState
@@ -32,25 +32,24 @@ data CpuOut = CpuOut
   , data_r_addr  :: Addr
   , data_w_en    :: Bool
   , data_w       :: Data
-  , prog_mode    :: Bool
-  , exec_mode    :: Bool
   , tx_start     :: Bool
   , tx_din       :: Data
+  , mode         :: Mode
   }
 
 instance Bundle CpuOut where
   type Unbundled' t CpuOut =
     ( Signal' t Addr, Signal' t Addr, Signal' t Bool, Signal' t Data
     , Signal' t Addr, Signal' t Addr, Signal' t Bool, Signal' t Data
-    , Signal' t Bool, Signal' t Bool, Signal' t Bool, Signal' t Data )
+    , Signal' t Bool, Signal' t Data, Signal' t Mode )
 
-  bundle' _ (a,b,c,d,e,f,g,h,i,j,k,l) = CpuOut <$> a <*> b <*> c <*> d
-                                               <*> e <*> f <*> g <*> h
-                                               <*> i <*> j <*> k <*> l
+  bundle' _ (a,b,c,d,e,f,g,h,i,j,k) = CpuOut <$> a <*> b <*> c <*> d
+                                             <*> e <*> f <*> g <*> h
+                                             <*> i <*> j <*> k
 
   unbundle' _ cpu_out = ( f instr_w_addr, f instr_r_addr, f instr_w_en, f instr_w
                         , f data_w_addr, f data_r_addr, f data_w_en, f data_w
-                        , f prog_mode, f exec_mode, f tx_start, f tx_din
+                        , f tx_start, f tx_din, f mode
                         )
     where
     f a = a <$> cpu_out

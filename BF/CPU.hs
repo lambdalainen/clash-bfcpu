@@ -12,13 +12,12 @@ import BF.Types
 import UART.UART
 
 bfInit :: BfState
-bfInit = BfState { _cpu_mode = Prog, _instr_ptr = 0, _instr_reg = 0xFFFF
-                 , _data_ptr = 0, _data_clr = True }
+bfInit = BfState { _cpu_mode = Clear, _instr_ptr = 0, _instr_reg = 0xFFFF , _data_ptr = 0 }
 
 defCpuOut :: CpuOut
 defCpuOut = CpuOut { instr_w_addr = 0, instr_r_addr = 0, instr_w_en = False, instr_w = 0
                    , data_w_addr = 0, data_r_addr = 0, data_w_en = False, data_w = 0
-                   , prog_mode = False, exec_mode = False, tx_start = False, tx_din = 0
+                   , tx_start = False, tx_din = 0, mode = Clear
                    }
 
 -- Note: `replicate 65536 0` doesn't work
@@ -37,35 +36,37 @@ isInstr x = x `elem` (map (fromIntegral . ord) $(v ['>', '<', '+', '-', '.', ','
 isEOT :: Data -> Bool
 isEOT x = x == 4
 
-cpuRun, cpuProgMode, cpuExecMode :: BfState -> CpuIn -> (BfState, CpuOut)
+cpuRun, cpuClearMode, cpuProgMode, cpuExecMode :: BfState -> CpuIn -> (BfState, CpuOut)
 cpuRun s i =
   case _cpu_mode s of
-    Prog -> cpuProgMode s i
-    Exec -> cpuExecMode s i
+    Clear -> cpuClearMode s i
+    Prog  -> cpuProgMode  s i
+    Exec  -> cpuExecMode  s i
+
+cpuClearMode s@(BfState {..}) _ =
+  swap $ flip runState s $ do
+    if _data_ptr == 2 ^ 16 - 1 then
+      cpu_mode .= Prog
+    else
+      data_ptr += 1
+    return defCpuOut { data_w_addr = _data_ptr, data_w_en = True, data_w = 0 }
 
 cpuProgMode s@(BfState {..}) (rx_done_tick, rx_dout, _, _, _) =
-  swap $ flip runState s $
-    if _data_clr then do
-      if _data_ptr == 2 ^ 16 - 1 then
-        data_clr .= False
+  swap $ flip runState s $ do
+    let out = defCpuOut { mode = _cpu_mode }
+    if rx_done_tick then
+      if isInstr rx_dout then do
+        instr_ptr += 1 -- TODO: check boundary
+        return out { instr_w_addr = _instr_ptr, instr_w_en = True, instr_w = rx_dout }
       else
-        data_ptr += 1
-      return defCpuOut { data_w_addr = _data_ptr, data_w_en = True, data_w = 0 }
-    else do
-      let out = defCpuOut { prog_mode = True }
-      if rx_done_tick then
-        if isInstr rx_dout then do
-          instr_ptr += 1 -- TODO: check boundary
-          return out { instr_w_addr = _instr_ptr, instr_w_en = True, instr_w = rx_dout }
+        if isEOT rx_dout then do
+          switch_to_exec
+          -- TODO: test the effect of readNew (read before write without it)
+          return out { instr_w_addr = _instr_ptr, instr_w_en = True, instr_w = 0 }
         else
-          if isEOT rx_dout then do
-            switch_to_exec
-            -- TODO: test the effect of readNew (read before write without it)
-            return out { instr_w_addr = _instr_ptr, instr_w_en = True, instr_w = 0 }
-          else
-            return out
-      else
-        return out
+          return out
+    else
+      return out
   where
   switch_to_exec = do
     cpu_mode  .= Exec
@@ -88,7 +89,7 @@ cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data
           return out' { instr_r_addr = _instr_ptr }
     else
       if instr_r == 0 then do
-        switch_to_prog
+        switch_to_clear
         return out'
       else do
         instr_reg .= _instr_ptr
@@ -119,13 +120,12 @@ cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data
   where
   instr_r' = chr $ fromIntegral instr_r
 
-  out' = defCpuOut { data_r_addr = _data_ptr, exec_mode = True }
+  out' = defCpuOut { data_r_addr = _data_ptr, mode = _cpu_mode }
 
-  switch_to_prog = do
-    cpu_mode  .= Prog
+  switch_to_clear = do
+    cpu_mode  .= Clear
     instr_ptr .= 0
     data_ptr  .= 0
-    data_clr  .= True
 
 {-# ANN topEntity
   (defTop
@@ -137,7 +137,7 @@ cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data
     , t_clocks   = []
     }) #-}
 topEntity :: Signal Bit -> (Signal Bit, Signal Bool, Signal Bool)
-topEntity rx = (tx, prog_mode, exec_mode)
+topEntity rx = (tx, (== Prog) <$> mode, (== Exec) <$> mode)
   where
   (rx_dout, rx_done_tick) = uartRx rx
   (tx, tx_done_tick)      = uartTx tx_start tx_din
@@ -147,8 +147,6 @@ topEntity rx = (tx, prog_mode, exec_mode)
 
   (instr_w_addr, instr_r_addr, instr_w_en, instr_w,
    data_w_addr, data_r_addr, data_w_en, data_w,
-   prog_mode, exec_mode, tx_start, tx_din)  = mealyB cpuRun bfInit
-      (rx_done_tick, rx_dout,
-       tx_done_tick,
-       instr_r,
-       data_r)
+   tx_start, tx_din, mode) =
+     mealyB cpuRun bfInit (rx_done_tick, rx_dout, tx_done_tick,
+                           instr_r, data_r)
