@@ -33,4 +33,47 @@ test_state2 t@(Test {..}) = flip runState t $ do
   test += 1
   return out
 
+data CpuOut = CpuOut { addr :: Int }
+  deriving Show
+
+defCpuOut = CpuOut { addr = 0 }
+
+-- This test shows that '_test' is captured in 'out' once t is evaluated, just as in test_state2
+test_state3 t@(Test {..}) n = flip runState t $ do
+  case n of
+    0 -> test += 1
+    1 -> test += 2
+    2 -> test += 3
+    _ -> test += 4
+  return out
+  where
+  out' = defCpuOut
+
+  out = case n of
+    0 -> out' { addr = _test }
+    1 -> out' { addr = _test }
+    2 -> out' { addr = _test }
+    _ -> out' { addr = _test }
+
+test_state4 t@(Test {..}) n = flip runState t $ do
+  case n of
+    0 -> test += 1
+    1 -> test += 2
+    2 -> test += 3
+    _ -> test += 4
+  return out' { addr = _test } -- even this doesn't work, since _test means '_test t'
+  where
+  out' = defCpuOut
+
+test_state5 t@(Test {..}) n = flip runState t $ do
+  case n of
+    0 -> test += 1
+    1 -> test += 2
+    2 -> test += 3
+    _ -> test += 4
+  new <- use test -- this works
+  return out' { addr = new }
+  where
+  out' = defCpuOut
+
 -- TODO: question: what if there are two Test-arguments?
