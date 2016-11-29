@@ -20,9 +20,6 @@ data BfState = BfState
 
 makeLenses ''BfState
 
-bfInit :: BfState
-bfInit = BfState Prog 0 0xFFFF 0 True
-
 -- (rx_done_tick, rx_dout, tx_done_tick, instr_r, data_r)
 type CpuIn   = (Bool, Data, Bool, Data, Data)
 
@@ -57,9 +54,3 @@ instance Bundle CpuOut where
                         )
     where
     f a = a <$> cpu_out
-
-defCpuOut :: CpuOut
-defCpuOut = CpuOut { instr_w_addr = 0, instr_r_addr = 0, instr_w_en = False, instr_w = 0
-                   , data_w_addr = 0, data_r_addr = 0, data_w_en = False, data_w = 0
-                   , prog_mode = False, exec_mode = False, tx_start = False, tx_din = 0
-                   }

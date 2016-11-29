@@ -11,6 +11,16 @@ import Data.Tuple
 import BF.Types
 import UART.UART
 
+bfInit :: BfState
+bfInit = BfState { _cpu_mode = Prog, _instr_ptr = 0, _instr_reg = 0xFFFF
+                 , _data_ptr = 0, _data_clr = True }
+
+defCpuOut :: CpuOut
+defCpuOut = CpuOut { instr_w_addr = 0, instr_r_addr = 0, instr_w_en = False, instr_w = 0
+                   , data_w_addr = 0, data_r_addr = 0, data_w_en = False, data_w = 0
+                   , prog_mode = False, exec_mode = False, tx_start = False, tx_din = 0
+                   }
+
 -- Note: `replicate 65536 0` doesn't work
 ramVec :: Vec (2 ^ 16) Data
 ramVec = replicate snat 0
