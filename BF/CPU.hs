@@ -12,7 +12,8 @@ import BF.Types
 import UART.UART
 
 bfInit :: BfState
-bfInit = BfState { _cpu_mode = Clear, _instr_ptr = 0, _instr_reg = 0xFFFF , _data_ptr = 0 }
+bfInit = BfState { _cpu_mode = Clear, _instr_ptr = 0, _instr_reg = 0xFFFF , _data_ptr = 0
+                 , _search_ptr = 0, _search_for = 0, _search_cnt = 0 }
 
 defCpuOut :: CpuOut
 defCpuOut = CpuOut { instr_w_addr = 0, instr_r_addr = 0, instr_w_en = False, instr_w = 0
@@ -77,16 +78,54 @@ cpuProgMode s@(BfState {..}) (rx_done_tick, rx_dout, _, _, _) =
 cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data_r) =
   swap $ flip runState s $ do
     if _instr_ptr == _instr_reg then do -- previous instruction hasn't finished
-      case instr_r' of
-        '.' | tx_done_tick -> do
-          instr_ptr += 1
-          return out' { instr_r_addr = _instr_ptr + 1 }
-        ',' | rx_done_tick -> do
-          instr_ptr += 1
-          return out' { instr_r_addr = _instr_ptr + 1, data_w_addr = _data_ptr,
-                        data_w_en = True, data_w = rx_dout }
-        _ -> do
-          return out' { instr_r_addr = _instr_ptr }
+      case data2char _search_for of
+        ']' ->
+          case instr_r' of
+            ']' ->
+              if _search_cnt == 0 then do    -- found match
+                search_for .= 0              -- stop searching
+                instr_ptr .= _search_ptr + 1 -- jump to the instruction after the matching ]
+                return out' { instr_r_addr = _search_ptr + 1 }
+              else do
+                search_cnt -= 1 -- decrease nesting count
+                search_ptr += 1
+                return out' { instr_r_addr = _search_ptr + 1 }
+            '[' -> do
+              search_cnt += 1 -- increase nesting count
+              search_ptr += 1
+              return out' { instr_r_addr = _search_ptr + 1 }
+            _   -> do
+              search_ptr += 1
+              return out' { instr_r_addr = _search_ptr + 1 }
+        '[' ->
+          case instr_r' of
+            '[' ->
+              if _search_cnt == 0 then do    -- found match
+                search_for .= 0              -- stop searching
+                instr_ptr .= _search_ptr + 1 -- jump to the instruction after the matching [
+                return out' { instr_r_addr = _search_ptr + 1 }
+              else do
+                search_cnt -= 1 -- decrease nesting count
+                search_ptr -= 1
+                return out' { instr_r_addr = _search_ptr - 1 }
+            ']' -> do
+              search_cnt += 1 -- increase nesting count
+              search_ptr -= 1
+              return out' { instr_r_addr = _search_ptr - 1 }
+            _   -> do
+              search_ptr -= 1
+              return out' { instr_r_addr = _search_ptr - 1 }
+        _   ->
+          case instr_r' of
+            '.' | tx_done_tick -> do
+              instr_ptr += 1
+              return out' { instr_r_addr = _instr_ptr + 1 }
+            ',' | rx_done_tick -> do
+              instr_ptr += 1
+              return out' { instr_r_addr = _instr_ptr + 1, data_w_addr = _data_ptr,
+                            data_w_en = True, data_w = rx_dout }
+            _ -> do
+              return out' { instr_r_addr = _instr_ptr }
     else
       if instr_r == 0 then do
         switch_to_clear
@@ -114,11 +153,31 @@ cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data
             return out' { instr_r_addr = _instr_ptr, tx_start = True, tx_din = data_r }
           ',' -> do
             return out' { instr_r_addr = _instr_ptr }
-          '[' -> return out'
-          ']' -> return out'
-          _   -> return out' -- TODO: indicate error
+          '[' -> do
+            if data_r == 0 then do
+              search_ptr .= _instr_ptr + 1
+              search_for .= char2data ']'
+              search_cnt .= 0
+              return out' { instr_r_addr = _instr_ptr + 1 }
+            else do
+              instr_ptr += 1
+              return out' { instr_r_addr = _instr_ptr + 1 }
+          ']' -> do
+            if data_r /= 0 then do
+              search_ptr .= _instr_ptr - 1
+              search_for .= char2data '['
+              search_cnt .= 0
+              return out' { instr_r_addr = _instr_ptr - 1 }
+            else do
+              instr_ptr += 1
+              return out' { instr_r_addr = _instr_ptr + 1 }
+          _   -> do
+            return out' -- TODO: indicate error
   where
-  instr_r' = chr $ fromIntegral instr_r
+  char2data = fromIntegral . ord
+  data2char = chr . fromIntegral
+
+  instr_r' = data2char instr_r
 
   out' = defCpuOut { data_r_addr = _data_ptr, mode = _cpu_mode }
 

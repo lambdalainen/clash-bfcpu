@@ -12,10 +12,13 @@ data Mode = Clear | Prog | Exec
   deriving Eq
 
 data BfState = BfState
-  { _cpu_mode  :: Mode
-  , _instr_ptr :: Addr -- 2^16 instructions maximum
-  , _instr_reg :: Addr
-  , _data_ptr  :: Addr -- 2^16 array cells
+  { _cpu_mode   :: Mode
+  , _instr_ptr  :: Addr -- 2^16 instructions maximum
+  , _instr_reg  :: Addr
+  , _data_ptr   :: Addr -- 2^16 array cells
+  , _search_ptr :: Addr
+  , _search_for :: Data
+  , _search_cnt :: Data -- this could limit our nesting [] levels to 2^8
   }
 
 makeLenses ''BfState
