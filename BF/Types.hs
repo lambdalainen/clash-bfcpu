@@ -1,12 +1,12 @@
-module BF.Types where
+module BF.Types
+  ( module BF.Types
+  , module Types ) where
 
 import CLaSH.Prelude
 import CLaSH.Signal.Bundle
 import CLaSH.Signal.Internal
 import Control.Lens
-
-type Addr = Unsigned 16
-type Data = Unsigned 8
+import Types
 
 data Mode = Clear | Prog | Exec
   deriving Eq
