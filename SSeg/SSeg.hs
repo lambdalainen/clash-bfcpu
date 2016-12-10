@@ -1,4 +1,4 @@
-module SSeg.SSeg where
+module SSeg.SSeg (ssegH, ssegU) where
 
 import CLaSH.Prelude
 import SSeg.HexToSSeg
@@ -36,7 +36,7 @@ a @@ (j,i) = fromIntegral $ (a `shiftR` i) `mod` 2^m
   where
   m  = j - i + 1 -- width
 
-ssegU :: Signal (Unsigned 32) -> (Signal (Unsigned 8, BitVector 8))
+ssegU :: Signal (Unsigned 32) -> Signal (Unsigned 8, BitVector 8)
 ssegU n = ssegH (split <$> n)
   where
   split x = let f = (x @@)
