@@ -68,5 +68,4 @@ fifo rd wr w_data = (sig _empty, sig _full, r_data)
     , t_extraOut = []
     , t_clocks   = []
     }) #-}
-topEntity :: Signal Bool -> Signal Bool -> Signal Data -> (Signal Bool, Signal Bool, Signal Data)
 topEntity = fifo
