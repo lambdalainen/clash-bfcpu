@@ -131,7 +131,7 @@ cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data
     else
       if instr_r == 0 then do
         switch_to_clear
-        return out'
+        return out' { mode = Clear }
       else do
         instr_reg .= _instr_ptr
         case instr_r' of
