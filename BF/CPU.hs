@@ -9,6 +9,7 @@ import Control.Monad.Trans.State
 import Data.Char
 import Data.Tuple
 import BF.Types
+import SSeg.SSeg
 import UART.UART
 
 bfInit :: BfState
@@ -18,7 +19,7 @@ bfInit = BfState { _cpu_mode = Clear, _instr_ptr = 0, _instr_reg = 0xFFFF , _dat
 defCpuOut :: CpuOut
 defCpuOut = CpuOut { instr_w_addr = 0, instr_r_addr = 0, instr_w_en = False, instr_w = 0
                    , data_w_addr = 0, data_r_addr = 0, data_w_en = False, data_w = 0
-                   , tx_start = False, tx_din = 0, mode = Clear
+                   , tx_start = False, tx_din = 0, mode = Clear, counter_rst = False
                    }
 
 -- Note: `replicate 65536 0` doesn't work
@@ -63,7 +64,8 @@ cpuProgMode s@(BfState {..}) (rx_done_tick, rx_dout, _, _, _) =
         if isEOT rx_dout then do
           switch_to_exec
           -- TODO: test the effect of readNew (read before write without it)
-          return out { instr_w_addr = _instr_ptr, instr_w_en = True, instr_w = 0 }
+          return out { instr_w_addr = _instr_ptr, instr_w_en = True, instr_w = 0,
+                       counter_rst = True }
         else
           return out
     else
@@ -72,7 +74,7 @@ cpuProgMode s@(BfState {..}) (rx_done_tick, rx_dout, _, _, _) =
   switch_to_exec = do
     cpu_mode  .= Exec
     instr_ptr .= 0
-    instr_reg .= 0xFFFF -- TODO: weird
+    instr_reg .= 0xFFFF
     data_ptr  .= 0
 
 cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data_r) =
@@ -186,18 +188,27 @@ cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data
     instr_ptr .= 0
     data_ptr  .= 0
 
+clkCounter :: Signal Bool -> Signal Bool -> Signal (Unsigned 32)
+clkCounter enable reset = s
+  where
+  s = regEn 0 (enable .||. reset) ((\rst x -> if rst then 0 else x + 1) <$> reset <*> s)
+
 {-# ANN topEntity
   (defTop
     { t_name     = "bf_cpu"
     , t_inputs   = ["RsRx"]
-    , t_outputs  = ["RsTx", "led_prog", "led_exec"]
+    , t_outputs  = ["RsTx", "led_prog", "led_exec", "an", "seg"]
     , t_extraIn  = [("clk", 1), ("btnCpuReset", 1)]
     , t_extraOut = []
     , t_clocks   = []
     }) #-}
-topEntity :: Signal Bit -> (Signal Bit, Signal Bool, Signal Bool)
-topEntity rx = (tx, (== Prog) <$> mode, (== Exec) <$> mode)
+topEntity :: Signal Bit -> (Signal Bit, Signal Bool, Signal Bool,
+                            Signal (Unsigned 8, BitVector 8))
+topEntity rx = (tx, is_prog_mode, is_exec_mode, ssegU (clkCounter is_exec_mode counter_rst))
   where
+  is_prog_mode = (== Prog) <$> mode
+  is_exec_mode = (== Exec) <$> mode
+
   (rx_dout, rx_done_tick) = uartRx rx
   (tx, tx_done_tick)      = uartTx tx_start tx_din
 
@@ -206,6 +217,6 @@ topEntity rx = (tx, (== Prog) <$> mode, (== Exec) <$> mode)
 
   (instr_w_addr, instr_r_addr, instr_w_en, instr_w,
    data_w_addr, data_r_addr, data_w_en, data_w,
-   tx_start, tx_din, mode) =
+   tx_start, tx_din, mode, counter_rst) =
      mealyB cpuRun bfInit (rx_done_tick, rx_dout, tx_done_tick,
                            instr_r, data_r)

@@ -38,21 +38,22 @@ data CpuOut = CpuOut
   , tx_start     :: Bool
   , tx_din       :: Data
   , mode         :: Mode
+  , counter_rst  :: Bool
   }
 
 instance Bundle CpuOut where
   type Unbundled' t CpuOut =
     ( Signal' t Addr, Signal' t Addr, Signal' t Bool, Signal' t Data
     , Signal' t Addr, Signal' t Addr, Signal' t Bool, Signal' t Data
-    , Signal' t Bool, Signal' t Data, Signal' t Mode )
+    , Signal' t Bool, Signal' t Data, Signal' t Mode, Signal' t Bool )
 
-  bundle' _ (a,b,c,d,e,f,g,h,i,j,k) = CpuOut <$> a <*> b <*> c <*> d
-                                             <*> e <*> f <*> g <*> h
-                                             <*> i <*> j <*> k
+  bundle' _ (a,b,c,d,e,f,g,h,i,j,k,l) = CpuOut <$> a <*> b <*> c <*> d
+                                               <*> e <*> f <*> g <*> h
+                                               <*> i <*> j <*> k <*> l
 
   unbundle' _ cpu_out = ( f instr_w_addr, f instr_r_addr, f instr_w_en, f instr_w
                         , f data_w_addr, f data_r_addr, f data_w_en, f data_w
-                        , f tx_start, f tx_din, f mode
+                        , f tx_start, f tx_din, f mode, f counter_rst
                         )
     where
     f a = a <$> cpu_out
