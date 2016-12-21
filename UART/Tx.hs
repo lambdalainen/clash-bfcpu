@@ -1,11 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module UART.Tx (TxState(_tx, _tx_done_tick), txInit, txRun) where
+module UART.Tx (txInit, txRun) where
 
 import CLaSH.Prelude
 import Control.Lens
 import Control.Monad
 import Control.Monad.Trans.State
+import Data.Tuple
+import Types
 
 data TxState = TxState
   { _tx           :: Bit
@@ -13,7 +15,7 @@ data TxState = TxState
   , _tx_state     :: Unsigned 2
   , _s_reg        :: Unsigned 4 -- sampling counter
   , _n_reg        :: Unsigned 3 -- number of bits received
-  , _b_reg        :: Unsigned 8 -- byte register
+  , _b_reg        :: Data       -- byte register
   }
 
 makeLenses ''TxState
@@ -21,14 +23,15 @@ makeLenses ''TxState
 txInit :: TxState
 txInit = TxState 1 False 0 0 0 0
 
-txRun :: TxState -> Bool -> Unsigned 8 -> Bit -> TxState
-txRun s@(TxState {..}) tx_start tx_din s_tick = flip execState s $ do
+txRun :: TxState -> (Bool, Data, Bit) -> (TxState, (Bit, Bool))
+txRun s@(TxState {..}) (tx_start, tx_din, s_tick) = swap $ flip runState s $ do
   tx_done_tick .= False
   case _tx_state of
     0 -> idle
     1 -> start
     2 -> rdata
     3 -> stop
+  return (_tx, view tx_done_tick s)
   where
   idle  = do
     tx .= 1

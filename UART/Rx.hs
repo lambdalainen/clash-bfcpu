@@ -1,15 +1,17 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module UART.Rx (RxState(_rx_dout, _rx_done_tick), rxInit, rxRun) where
+module UART.Rx (rxInit, rxRun) where
 
 import CLaSH.Prelude
 import Control.Lens
 import Control.Monad
 import Control.Monad.Trans.State
+import Data.Tuple
+import Types
 
 data RxState = RxState
   { _rx_done_tick :: Bool
-  , _rx_dout      :: Unsigned 8 -- byte register (same as _b_reg in Tx)
+  , _rx_dout      :: Data       -- byte register (same as _b_reg in Tx)
   , _rx_state     :: Unsigned 2
   , _s_reg        :: Unsigned 4 -- sampling counter
   , _n_reg        :: Unsigned 3 -- number of bits received
@@ -20,14 +22,15 @@ makeLenses ''RxState
 rxInit :: RxState
 rxInit = RxState False 0 0 0 0
 
-rxRun :: RxState -> Bit -> Bit -> RxState
-rxRun r@(RxState {..}) rx s_tick = flip execState r $ do
+rxRun :: RxState -> (Bit, Bit) -> (RxState, (Data, Bool))
+rxRun s@(RxState {..}) (rx, s_tick) = swap $ flip runState s $ do
   rx_done_tick .= False
   case _rx_state of
     0 -> idle
     1 -> start
     2 -> rdata
     3 -> stop
+  return (_rx_dout, view rx_done_tick s)
   where
   idle  = when (rx == 0) $ do
             rx_state .= 1
