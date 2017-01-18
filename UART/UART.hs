@@ -16,10 +16,13 @@ uartRx rx rx_read = (fifo_r_data, fifo_empty)
   (fifo_empty, _, fifo_r_data) = fifo rx_read rx_done_tick rx_dout
 
 uartTx :: Signal Bool -> Signal Data -> (Signal Bit, Signal Bool)
-uartTx tx_write tx_data = (tx, tx_done_tick)
+uartTx tx_write tx_data = (tx, fifo_full)
   where
-  (tx, tx_done_tick) = mealyB txRun txInit (tx_write, tx_data, baud_tick)
+  (tx, tx_done_tick) = mealyB txRun txInit (not1 fifo_empty, fifo_r_data, baud_tick)
 
+  (fifo_empty, fifo_full, fifo_r_data) = fifo tx_done_tick tx_write tx_data
+
+-- echo
 {-# ANN topEntity
   (defTop
     { t_name     = "uart"
@@ -32,5 +35,5 @@ uartTx tx_write tx_data = (tx, tx_done_tick)
 topEntity :: Signal Bit -> Signal Bool -> Signal Bit
 topEntity rx rx_read = tx
   where
-  (rx_data, rx_empty) = uartRx rx rx_read
-  (tx, tx_done_tick)  = uartTx rx_read rx_data
+  (rx_data, _) = uartRx rx rx_read
+  (tx, _)      = uartTx rx_read rx_data
