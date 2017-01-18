@@ -77,7 +77,7 @@ cpuProgMode s@(BfState {..}) (rx_done_tick, rx_dout, _, _, _) =
     instr_reg .= 0xFFFF
     data_ptr  .= 0
 
-cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data_r) =
+cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_full, instr_r, data_r) =
   swap $ flip runState s $ do
     if _instr_ptr == _instr_reg then do -- previous instruction hasn't finished
       case data2char _search_for of
@@ -119,9 +119,12 @@ cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data
               return out' { instr_r_addr = _search_ptr - 1 }
         _   ->
           case instr_r' of
-            '.' | tx_done_tick -> do
-              instr_ptr += 1
-              return out' { instr_r_addr = _instr_ptr + 1 }
+            '.' ->
+              if tx_full then
+                return out' { instr_r_addr = _instr_ptr }
+              else do
+                instr_ptr += 1
+                return out' { instr_r_addr = _instr_ptr + 1, tx_start = True, tx_din = data_r }
             ',' | rx_done_tick -> do
               instr_ptr += 1
               return out' { instr_r_addr = _instr_ptr + 1, data_w_addr = _data_ptr,
@@ -152,7 +155,11 @@ cpuExecMode s@(BfState {..}) (rx_done_tick, rx_dout, tx_done_tick, instr_r, data
             return out' { instr_r_addr = _instr_ptr + 1, data_w_addr = _data_ptr,
                           data_w_en = True, data_w = data_r - 1 }
           '.' -> do
-            return out' { instr_r_addr = _instr_ptr, tx_start = True, tx_din = data_r }
+            if tx_full then
+              return out' { instr_r_addr = _instr_ptr }
+            else do
+              instr_ptr += 1
+              return out' { instr_r_addr = _instr_ptr + 1, tx_start = True, tx_din = data_r }
           ',' -> do
             return out' { instr_r_addr = _instr_ptr }
           '[' -> do
@@ -210,7 +217,7 @@ topEntity rx = (tx, is_prog_mode, is_exec_mode, ssegU (clkCounter is_exec_mode c
   is_exec_mode = (== Exec) <$> mode
 
   (rx_dout, rx_done_tick) = uartRx rx
-  (tx, tx_done_tick)      = uartTx tx_start tx_din
+  (tx, tx_full)           = uartTx tx_start tx_din
 
   instr_r = instrRam instr_w_addr instr_r_addr instr_w_en instr_w
   data_r  = dataRam data_w_addr data_r_addr data_w_en data_w
@@ -218,5 +225,5 @@ topEntity rx = (tx, is_prog_mode, is_exec_mode, ssegU (clkCounter is_exec_mode c
   (instr_w_addr, instr_r_addr, instr_w_en, instr_w,
    data_w_addr, data_r_addr, data_w_en, data_w,
    tx_start, tx_din, mode, counter_rst) =
-     mealyB cpuRun bfInit (rx_done_tick, rx_dout, tx_done_tick,
+     mealyB cpuRun bfInit (rx_done_tick, rx_dout, tx_full,
                            instr_r, data_r)
