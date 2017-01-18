@@ -1,4 +1,4 @@
-module UART.UART (uartRx, uartTx) where
+module UART.UART (uartRx, uartTx, topEntity) where
 
 import CLaSH.Prelude
 import Data.Char
@@ -6,29 +6,27 @@ import UART.Baud
 import UART.Rx
 import UART.Tx
 
--- {-# ANN topEntity
---   (defTop
---     { t_name     = "uart"
---     , t_inputs   = ["RsRx"]
---     , t_outputs  = ["RsTx"]
---     , t_extraIn  = [("clk", 1)]
---     , t_extraOut = []
---     , t_clocks   = []
---     }) #-}
--- topEntity :: Signal Bit -> Signal Bit
--- topEntity rx = _tx <$> tx_reg
---   where
---   rx_reg  = register rxInit (rxRun <$> rx_reg <*> rx <*> baud_tick)
---   tx_reg  = register txInit (txRun <$> tx_reg <*> (_rx_done_tick <$> rx_reg)
---                                               <*> (_tx_dout <$> rx_reg)
---                                               <*> baud_tick)
-
 uartRx :: Signal Bit -> (Signal (Unsigned 8), Signal Bool)
-uartRx rx = (_rx_dout <$> rx_reg, _rx_done_tick <$> rx_reg)
+uartRx rx = (rx_dout, rx_done_tick)
   where
-  rx_reg  = register rxInit (rxRun <$> rx_reg <*> rx <*> baud_tick)
+  (rx_dout, rx_done_tick) = mealyB rxRun rxInit (rx, baud_tick)
 
 uartTx :: Signal Bool -> Signal (Unsigned 8) -> (Signal Bit, Signal Bool)
-uartTx tx_start tx_din = (_tx <$> tx_reg, _tx_done_tick <$> tx_reg)
+uartTx tx_start tx_din = (tx, tx_done_tick)
   where
-  tx_reg  = register txInit (txRun <$> tx_reg <*> tx_start <*> tx_din <*> baud_tick)
+  (tx, tx_done_tick) = mealyB txRun txInit (tx_start, tx_din, baud_tick)
+
+{-# ANN topEntity
+  (defTop
+    { t_name     = "uart"
+    , t_inputs   = ["RsRx"]
+    , t_outputs  = ["RsTx"]
+    , t_extraIn  = [("clk", 1)]
+    , t_extraOut = []
+    , t_clocks   = []
+    }) #-}
+topEntity :: Signal Bit -> Signal Bit
+topEntity rx = tx
+  where
+  (rx_dout, rx_done_tick) = uartRx rx
+  (tx, tx_done_tick)      = uartTx rx_done_tick rx_dout
