@@ -31,7 +31,8 @@ txRun s@(TxState {..}) (tx_start, tx_din, s_tick) = swap $ flip runState s $ do
     1 -> start
     2 -> rdata
     3 -> stop
-  return (_tx, view tx_done_tick s)
+  done_tick <- use tx_done_tick
+  return (_tx, done_tick)
   where
   idle  = do
     tx .= 1

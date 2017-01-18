@@ -30,7 +30,8 @@ rxRun s@(RxState {..}) (rx, s_tick) = swap $ flip runState s $ do
     1 -> start
     2 -> rdata
     3 -> stop
-  return (_rx_dout, view rx_done_tick s)
+  done_tick <- use rx_done_tick
+  return (_rx_dout, done_tick)
   where
   idle  = when (rx == 0) $ do
             rx_state .= 1

@@ -63,9 +63,7 @@ fifoRun s@(FifoState {..}) input@(rd, wr) = swap $ flip runState s $ do
       r_ptr += 1
       w_ptr += 1
     _ -> return ()
-  let v f  = view f s
-      w_en = wr && not _full
-  -- return (v r_ptr, v w_ptr, v w_en, v empty, v full) -- TODO: better way?
+  let w_en = wr && not _full
   return (_r_ptr, _w_ptr, w_en, _empty, _full) -- TODO: better way?
 
 fifo :: Signal Bool -> Signal Bool -> Signal Data -> (Signal Bool, Signal Bool, Signal Data)
