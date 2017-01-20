@@ -21,17 +21,15 @@ Our design has some new features:
 1. Clone the repository
 2. Install [stack](https://docs.haskellstack.org/en/stable/README/#how-to-install)
 3. Install clash
-```
-stack setup --resolver=lts-6.24
-stack install clash-ghc
-```
+
+        stack setup --resolver=lts-6.24
+        stack install clash-ghc
+Note that lts-6.x (ghc-7.10.3) needs to be used.
 4. Generate Verilog
-```
-./runclash.sh
-CLaSH.Prelude> :l BF/CPU.hs
-CLaSH.Prelude> :verilog
-```
+
+        ./runclash.sh
+        CLaSH.Prelude> :l BF/CPU.hs
+        CLaSH.Prelude> :verilog
 5. Prepare top module for synthesis
-```
-./bf_cpu.sh
-```
+
+        ./bf_cpu.sh
