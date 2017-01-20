@@ -1,5 +1,4 @@
 # clash-bfcpu
-Optimized &amp; pipelined Brainfuck CPU designed with CλaSH
 
 This is an exercise project about FPGA programming. We use the functional hardware description language [CλaSH](http://www.clash-lang.org/) to design a Brainfuck CPU. Different approaches have be made before:
 
@@ -16,3 +15,23 @@ Our design has some new features:
 1. The CPU includes a programming mode in which programs can be loaded directly through UART (more on this later)
 1. A number of optimizations are exploited: we start with a very naïve implementation, then apply different optimizations (work in progress)
 1. When running a program, the number of clock cycles is counted and displayed on the seven-segment display (we are using Nexys 4 from Digilent, but other boards with 8 seven-segment displays certainly can be used). This makes it easy to evaluate different optimizations.
+
+## Setup & Workflow
+
+1. Clone the repository
+2. Install [stack](https://docs.haskellstack.org/en/stable/README/#how-to-install)
+3. Install clash
+```
+stack setup --resolver=lts-6.24
+stack install clash-ghc
+```
+4. Generate Verilog
+```
+./runclash.sh
+CLaSH.Prelude> :l BF/CPU.hs
+CLaSH.Prelude> :verilog
+```
+5. Prepare top module for synthesis
+```
+./bf_cpu.sh
+```
