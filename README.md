@@ -16,7 +16,9 @@ Our design has some new features:
 1. A number of optimizations are exploited: we start with a very naïve implementation, then apply different optimizations (work in progress)
 1. When running a program, the number of clock cycles is counted and displayed on the seven-segment display (we are using Nexys 4 from Digilent, but other boards with 8 seven-segment displays certainly can be used). This makes it easy to evaluate different optimizations.
 
-![Brainfuck CPU on FPGA](https://github.com/aufheben/clash-bfcpu/raw/master/doc/video.gif "Brainfuck CPU on FPGA")
+<p align="center">
+  <img src="https://github.com/aufheben/clash-bfcpu/raw/master/doc/video.gif" />
+</p>
 
 ## Setup & Workflow
 
