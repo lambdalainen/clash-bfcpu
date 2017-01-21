@@ -21,7 +21,10 @@ mealyRun s@(MealyState {..}) test_view = swap $ flip runState s $ do
   mealy_data += 1
   let even     = _mealy_data `mod` 2 == 0
       view_val = view mealy_data s
+  -- first way
   use_val <- use mealy_data
+  -- second way
+  -- MealyState a <- get
   return (_mealy_data, if test_view then view_val else use_val)
 
 mealyTest :: Signal Bool -> (Signal Data, Signal Data)
