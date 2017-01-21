@@ -21,3 +21,10 @@ cpu2 n = pair
   MachCode {..} = case n of
     0 -> nullCode { fstInt = 1 }
     _ -> nullCode { sndString = "world" }
+
+cpu3 :: MachCode -> (Int, String)
+cpu3 MachCode { fstInt = i } = (fstInt, sndString)
+  where
+  MachCode {..} = case i of
+    0 -> nullCode { fstInt = 1 }
+    _ -> nullCode { sndString = "world" }
