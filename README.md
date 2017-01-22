@@ -53,7 +53,7 @@ Here I enabled "Local echo" and "Line Wrap". "Hex Display" is sometimes useful f
 
 ![Minicom Config Figure 3](https://github.com/aufheben/clash-bfcpu/raw/master/doc/minicom-3.png)
 
-Now we can run some test programs (can be found under b/)
+Now we can run some test programs (can be found under b/). Simply type/paste the program into the serial terminal and press Ctrl+D, which will send EOT (ASCII 0x04) to the CPU. The CPU then starts executing the instructions and when the program terminates, you can input a new program. Press the "CPU RESET" button on the board to abort the execution of any program.
 
 ![mandelbrot.b](https://github.com/aufheben/clash-bfcpu/raw/master/doc/mandelbrot.png)
 
@@ -63,7 +63,7 @@ The following sections assume you already know the Brainfuck instructions.
 
 ## Naïve Implementation
 
-The first version simply implements the operational semantics of the 8 Brainfuck instructions as is. Specificially, the `[` and `]` instructions will search through the instruction memory to find a matching bracket.
+The first version simply implements the operational semantics of the 8 instructions as is. Specificially, the `[` and `]` instructions will search through the instruction memory to find a matching bracket, which is very inefficient.
 
 ## Optimizations
 
