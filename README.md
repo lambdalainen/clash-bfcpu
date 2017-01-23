@@ -61,7 +61,9 @@ The following sections assume you already know the Brainfuck instructions.
 
 ## Naïve Implementation
 
-The first version simply implements the operational semantics of the 8 instructions as is. Specificially, the `[` and `]` instructions will search through the instruction memory to find a matching bracket, which is very inefficient.
+The first version simply implements the operational semantics of the 8 instructions. Specificially, the `[` and `]` instructions will search through the instruction memory to find a matching bracket, which is very inefficient.
+
+But this version is also the "non-cheating" version since we treat the Brainfuck instructions **as is**, no transformation to the original program is performed. _So in a sense this version is the true Brainfuck CPU :-)_
 
 ## Optimizations
 
