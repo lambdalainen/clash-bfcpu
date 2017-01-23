@@ -57,8 +57,6 @@ Now we can run some test programs (can be found under b/). Simply type/paste the
 
 ![mandelbrot.b](https://github.com/aufheben/clash-bfcpu/raw/master/doc/mandelbrot.png)
 
-![hanoi.b](https://github.com/aufheben/clash-bfcpu/raw/master/doc/hanoi.png)
-
 The following sections assume you already know the Brainfuck instructions.
 
 ## Naïve Implementation
@@ -68,3 +66,5 @@ The first version simply implements the operational semantics of the 8 instructi
 ## Optimizations
 
 The main reference of optimization is [brainfuck optimization strategies](http://calmerthanyouare.org/2015/01/07/optimizing-brainfuck.html).
+
+The first bottleneck is IO: UART is quite slow. At 19200 baud rate, it takes 52320 clock cycles to transmit 1 byte. If there is no buffering at Tx, hello.b takes 680487 cycles to run, while mandelbrot.b takes 32217824107 cycles. Since Nexys 4 runs at 100MHz, mandelbrot.b takes about 322.5s! When a 2^8 bytes FIFO is added to Tx, hello.b takes _ cycles and mandelbrot.b takes _ cycles. Quite an improvement! Next, it is natural to turn up the baud rate.
