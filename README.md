@@ -61,7 +61,7 @@ mandelbrot.b:
 
 Self-interpreting is also possible: dbfi.b is world's shortest Brainfuck interpreter in Brainfuck:
 
-![dbfi.b](https://github.com/aufheben/clash-bfcpu/raw/master/doc/dbfi.png)
+![dbfi.b](https://github.com/aufheben/clash-bfcpu/raw/master/doc/self.png)
 
 The following sections assume you already know the Brainfuck instructions.
 
