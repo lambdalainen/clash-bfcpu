@@ -55,7 +55,13 @@ Here I enabled "Local echo" and "Line Wrap". "Hex Display" is sometimes useful f
 
 Now we can run some test programs (can be found under b/). Simply type/paste the program into the serial terminal and press Ctrl+D, which will send EOT (ASCII 0x04) to the CPU. The CPU then starts executing the instructions and when the program terminates, you can input a new program. Press the "CPU RESET" button on the board to abort the execution of any program.
 
+mandelbrot.b:
+
 ![mandelbrot.b](https://github.com/aufheben/clash-bfcpu/raw/master/doc/mandelbrot.png)
+
+Self-interpreting is also possible: dbfi.b is world's shortest Brainfuck interpreter in Brainfuck:
+
+![dbfi.b](https://github.com/aufheben/clash-bfcpu/raw/master/doc/dbfi.png)
 
 The following sections assume you already know the Brainfuck instructions.
 
@@ -65,8 +71,12 @@ The first version simply implements the operational semantics of the 8 instructi
 
 But this version is also the "non-cheating" version since we treat the Brainfuck instructions **as is**, no transformation to the original program is performed. _So in a sense this version is the true Brainfuck CPU :-)_
 
+Note that the input is not buffered (there is no FIFO after Rx). Although this is sometimes not desirable, we find it easier to work with in some interactive cases.
+
 ## Optimizations
 
 The main reference of optimization is [brainfuck optimization strategies](http://calmerthanyouare.org/2015/01/07/optimizing-brainfuck.html).
 
 The first bottleneck is IO: UART is quite slow. At 19200 baud rate, it takes 52320 clock cycles to transmit 1 byte. If there is no buffering at Tx, hello.b takes 680487 cycles to run, while mandelbrot.b takes 32217824107 cycles. Since Nexys 4 runs at 100MHz, mandelbrot.b takes about 322.5s! When a 2^8 bytes FIFO is added to Tx, hello.b takes _ cycles and mandelbrot.b takes _ cycles. Quite an improvement! Next, it is natural to turn up the baud rate.
+
+We take 3 programs to benchmark our optimizations: hanoi.b, long.b, mandelbrot.b. The other 3 programs in the reference post are not used as they require inputs, which makes it hard to measure the precise running time unless we add a stage to allow the user to supply the input before the program runs.
